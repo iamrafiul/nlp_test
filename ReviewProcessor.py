@@ -136,9 +136,19 @@ class ReviewProcessor:
 			reviews = hotel.reviews
 			filtered_reviews = self.filter_reviews_with_keyword(reviews)
 
+			semantic_processor = SemanticProcessor()
+			filtered_reviews, total_pos_count, total_neg_count = semantic_processor.process_reviews_using_semantics(filtered_reviews)
+
+			hotel.ratings["positive"] = total_pos_count
+			hotel.ratings["negative"] = total_neg_count
+			hotel.score = float(total_pos_count - total_neg_count)
 			hotel.reviews = filtered_reviews
 
 			hotel_list.append(hotel)
 
-		return hotel_list
+		hotel_list.sort(key=lambda x: x.score, reverse=True)
+
+		best_hotel = hotel_list[0] if len(hotel_list) > 0 else ''
+
+		return best_hotel
 

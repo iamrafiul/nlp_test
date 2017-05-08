@@ -11,9 +11,20 @@ def index():
 
 	if len(topic) > 0:
 		review_proccesor = ReviewProcessor(topic)
-		hotels = review_proccesor.get_filtered_result()
+		hotel = review_proccesor.get_filtered_result()
 
-		return jsonify({'result': repr(hotels), 'status': '200 OK'})
+		if hotel is not None:
+			output = dict()
+
+			output["name"] = hotel.name
+			output["hotel_url"] = hotel.hotel_url
+			output["address"] = hotel.address
+			output["img_url"] = hotel.img_url
+			output["positive_rating_count"] = hotel.ratings["positive"]
+			output["negative_rating_count"] = hotel.ratings["negative"]
+			output["score"] = hotel.score
+
+		return jsonify({'result': output, 'status': '200 OK'})
 	else:
 		return jsonify({'message': "No search topic found. Please try with a search topic. A probable URL should be something like http://example.com/?topic=spa'", 'status': '204 No Content'})
 
