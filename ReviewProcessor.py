@@ -1,103 +1,144 @@
-from Hotel import Hotel
-from Review import Review
-import os
-import json
 import re
 
+from Hotel import Hotel
+from Review import Review
+from FileManager import FileManager
+from SemanticProcessor import SemanticProcessor
+
+
 class ReviewProcessor:
+	
+	# Constructor
 	def __init__(self, keyword):
 		self.files = ['reviews1.json', 'reviews2.json', 'reviews3.json', 'reviews4.json', 'reviews5.json']
-		self.dir_path = os.path.dirname(os.path.realpath(__file__))
 		self.hotels = list()
-		self.keyword = keyword
+		self.keyword = keyword.lower()
 
+	
+	'''
+		Parse hotel information	
+
+		Input:
+			- hotel_obj : object
+			- hotel_data : dictionary
+
+		Output:
+			- hotel_obj : object
+
+	'''
+	def parse_hotel_data(self, hotel_obj, hotel_data):
+		address_cleaner = re.compile('<.*?>')
+		hotel_obj.id = hotel_data['HotelID'] if 'HotelID' in hotel_data else ''
+		hotel_obj.name = hotel_data['Name'] if 'Name' in hotel_data else ''
+		hotel_obj.hotel_url = hotel_data['HotelURL'] if 'HotelURL' in hotel_data else ''
+		hotel_obj.price = hotel_data['Price'] if 'Price' in hotel_data else ''
+		hotel_obj.address = re.sub(address_cleaner, '', hotel_data['Address']) if 'Address' in hotel_data else ''
+		hotel_obj.img_url = hotel_data['ImgURL'] if 'ImgURL' in hotel_data else ''
+
+		return hotel_obj
+
+	'''
+		Parse all the reviews of a particular hotel	
+
+		Input:
+			- data to parse : list of dictionary
+
+		Output:
+			- reviews : list
+
+	'''
+	def parse_review_data(self, reviews):
+		review_list = list()
+		for each in reviews:
+			review = Review()
+			
+			review.id = each['ReviewID'] if 'ReviewID'in each else ''
+			review.title = each['Title'] if 'Title' in each else ''
+			review.content = each['Content'] if 'Content' in each else ''
+			review.author = each['Author'] if 'Author' in each else ''
+			review.author_location = each['AuthorLocation'] if 'AuthorLocation' in each else ''
+			review.date_created = each['Date'] if 'Date' in each else ''
+
+			review_list.append(review)
+
+		return review_list
+
+
+	'''
+		Parse all information(hotel information, reviews) a hotel	
+
+		Input:
+			- filename : Name of the file to parse from
+
+		Output:
+			- hotel : object
+
+	'''
 	def parse_hotel_info(self, file_name):
-		with open( os.path.join(self.dir_path, file_name), 'r+') as file_data:
-			hotel_data = json.load(file_data)
+		file_manager = FileManager()
+		file_data = file_manager.read_file_data(file_name)
 
-		hotel_info = hotel_data['HotelInfo']
+		hotel_info = file_data['HotelInfo']
+		hotel_obj = Hotel()
+		hotel = self.parse_hotel_data(hotel_obj, hotel_info)
 
-		hotel = Hotel()
-
-		try:
-			hotel.id = hotel_info['HotelID'] if 'HotelID' in hotel_info else ''
-			hotel.name = hotel_info['Name'] if 'Name' in hotel_info else ''
-			hotel.hotel_url = hotel_info['HotelURL'] if 'HotelURL' in hotel_info else ''
-			hotel.price = hotel_info['Price'] if 'Price' in hotel_info else ''
-			hotel.address = hotel_info['Address'] if 'Address' in hotel_info else ''
-			hotel.img_url = hotel_info['ImgURL'] if 'ImgURL' in hotel_info else ''
-
-			reviews = hotel_data['Reviews']
-
-			for each in reviews:
-				review = Review()
-
-				try:
-					review.id = each['ReviewID'] if 'ReviewID'in each else ''
-					review.title = each['Title'] if 'Title' in each else ''
-					review.content = each['Content'] if 'Content' in each else ''
-					review.author = each['Author'] if 'Author' in each else ''
-					review.author_location = each['AuthorLocation'] if 'AuthorLocation' in each else ''
-					review.date_created = each['Date'] if 'Date' in each else ''
-				except:
-					pass
-
-				hotel.reviews.append(review)
-		except:
-			pass
+		reviews = file_data['Reviews']
+		review_list = self.parse_review_data(reviews)
+		
+		hotel.reviews = review_list
 			
 		return hotel
 
-	def get_hotel_info_list(self):
+
+	'''
+		Filter reviews which has the given keyword(topic) 
+
+		Input:
+			- reviews : list of reviews
+
+		Output:
+			- filtered_revies : filtered list of reviews
+
+	'''
+	def filter_reviews_with_keyword(self, reviews):
+		filtered_reviews = list()
+		for review in reviews:
+			isKeywordFound = False
+			if review.title is not None:
+				if self.keyword in review.title.lower():
+					isKeywordFound = True
+				
+			if review.content is not None:
+				if self.keyword in review.content.lower():
+					isKeywordFound = True
+
+			if isKeywordFound:
+				filtered_reviews.append(review)
+
+		return filtered_reviews
+
+
+	'''
+		Get hotel which has the best score according to simple statictics
+
+		Input:
+			- None
+
+		Output:
+			- hotel : object
+
+	'''
+	def get_filtered_result(self):
+		hotel_list = list()
+
 		for file_name in self.files:
 			hotel = self.parse_hotel_info(file_name)
-			self.hotels.append(hotel)
-
-	def filter_reviews(self):
-		self.get_hotel_info_list()
-
-		for hotel in self.hotels:
-			regex = re.compile('[^A-Za-z0-9\s!?]')
 			reviews = hotel.reviews
-			print len(reviews)
+			filtered_reviews = self.filter_reviews_with_keyword(reviews)
 
-			filtered_reviews = list()
-
-			for review in reviews:
-				isKeywordFound = False
-				if review.title is not None:
-					title_tokens = [ each.encode('utf-8') for each in review.title.split(' ')]
-					title_tokens = [regex.sub('', each.lower()) for each in title_tokens if regex.sub('', each.lower()) is not '']
-					
-					if self.keyword in title_tokens:
-						isKeywordFound = True
-					
-				if review.content is not None:
-					content_tokens = [ each.encode('utf-8') for each in review.content.split(' ')]
-					content_tokens = [regex.sub('', each.lower()) for each in content_tokens if regex.sub('', each.lower()) is not '']
-					
-					if self.keyword in content_tokens:
-						isKeywordFound = True
-
-				if isKeywordFound:
-					filtered_reviews.append(review)
-
-					#send to find semantics
-			
 			hotel.reviews = filtered_reviews
-			print len(filtered_reviews)
-			
-				
 
+			hotel_list.append(hotel)
 
-
-
-
-
-
-
-
-
-
-
+		return hotel_list
 

@@ -7,3 +7,5 @@ class Hotel:
 		self.address = ''
 		self.img_url = ''
 		self.reviews = list()
+		self.ratings = dict()
+		self.score = ''
