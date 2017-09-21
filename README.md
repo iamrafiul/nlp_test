@@ -1,5 +1,5 @@
 # Trivago Coding Challenge
-This is the coding challenge given by trivago as a part of 'Software Engineer' position screening.
+
 
 I am assuming that you already have Python 2.7 and virtual environment( "pip install virtualenv" ) installed in your machine.
 
